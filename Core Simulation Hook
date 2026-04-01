@@ -1,0 +1,39 @@
+import { useState, useEffect, useRef } from 'react';
+
+export const useFleetSimulation = (allTripsData, speed = 1) => {
+  const [currentTime, setCurrentTime] = useState(null);
+  const [isActive, setIsActive] = useState(false);
+  const timerRef = useRef(null);
+
+  // Initialize: Set time to the start of the earliest trip
+  useEffect(() => {
+    const startTimes = Object.values(allTripsData).map(trip => trip[0]?.timestamp);
+    setCurrentTime(Math.min(...startTimes));
+  }, [allTripsData]);
+
+  useEffect(() => {
+    if (isActive) {
+      timerRef.current = setInterval(() => {
+        setCurrentTime(prev => prev + (1000 * speed)); // Advance time based on speed
+      }, 1000);
+    } else {
+      clearInterval(timerRef.current);
+    }
+    return () => clearInterval(timerRef.current);
+  }, [isActive, speed]);
+
+  // Helper to get current state of a specific trip
+  const getTripSnapshot = (tripId) => {
+    const events = allTripsData[tripId] || [];
+    const pastEvents = events.filter(e => e.timestamp <= currentTime);
+    const latestEvent = pastEvents[pastEvents.length - 1];
+    
+    return {
+      history: pastEvents,
+      current: latestEvent,
+      progress: (pastEvents.length / events.length) * 100
+    };
+  };
+
+  return { currentTime, setIsActive, isActive, getTripSnapshot };
+};
